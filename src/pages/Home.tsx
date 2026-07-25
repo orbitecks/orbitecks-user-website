@@ -326,7 +326,7 @@ const Home = () => {
                     <div className="float-number">
                       {(() => {
                         const val = hero.floatCards.successRate.value;
-                        const match = val.match(/^([\d.]+)([%])$/);
+                        const match = val.match(/^([\d.]+)([^\d.]+)$/);
                         if (match) {
                           return (
                             <>
@@ -358,7 +358,7 @@ const Home = () => {
                     <div className="float-number">
                       {(() => {
                         const val = hero.floatCards.happyClients.value;
-                        const match = val.match(/^([\d.]+)([+])$/);
+                        const match = val.match(/^([\d.]+)([^\d.]+)$/);
                         if (match) {
                           return (
                             <>

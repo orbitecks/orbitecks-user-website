@@ -120,7 +120,7 @@ const Portfolio = () => {
                 <div style={{ fontSize: 28, fontWeight: 900, color: 'var(--dark)', letterSpacing: '-0.03em', marginBottom: 4 }}>
                   {(() => {
                     const valStr = String(s?.val || '');
-                    const match = valStr.match(/^([\d.]+)([+★%])$/);
+                    const match = valStr.match(/^([\d.]+)([^\d.]+)$/);
                     if (match) {
                       return (
                         <>
