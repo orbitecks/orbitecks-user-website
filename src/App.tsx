@@ -1,4 +1,4 @@
-import { HashRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Navbar from './components/Navbar.tsx';
 import Footer from './components/Footer.tsx';
 import ScrollToTop from './components/ScrollToTop.tsx';
@@ -28,7 +28,7 @@ import './index.css';
 function App() {
   return (
     <ErrorBoundary>
-      <HashRouter>
+      <BrowserRouter>
         <OfflineBanner />
         <ScrollToTop />
         <Navbar />
@@ -56,7 +56,7 @@ function App() {
           </Routes>
         </PageContainer>
         <Footer />
-      </HashRouter>
+      </BrowserRouter>
     </ErrorBoundary>
   );
 }
