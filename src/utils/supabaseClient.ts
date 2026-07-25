@@ -1,8 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 import { sanitizeInput } from './textHelper';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://qkvvshhzfuilydigiqdp.supabase.co';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_kVkawbC8TRJP1vPYQRN62Q_su0kd0it';
 
 if (!supabaseUrl || !supabaseAnonKey) {
   console.warn(
