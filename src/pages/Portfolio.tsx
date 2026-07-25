@@ -120,7 +120,7 @@ const Portfolio = () => {
                 <div style={{ fontSize: 28, fontWeight: 900, color: 'var(--dark)', letterSpacing: '-0.03em', marginBottom: 4 }}>
                   {(() => {
                     const valStr = String(s?.val || '');
-                    const match = valStr.match(/^([\d.]+)([^\d.]+)$/);
+                    const match = valStr.match(/^([\d.]+)(.+)$/);
                     if (match) {
                       return (
                         <>
@@ -202,7 +202,21 @@ const Portfolio = () => {
                 <div style={{ display: 'flex', gap: 32, marginBottom: 36, flexWrap: 'wrap' }}>
                   {featuredCaseStudy?.stats?.map((stat: any, i: number) => (
                     <div key={i}>
-                      <div style={{ fontSize: 28, fontWeight: 900, color: 'var(--purple-light)', letterSpacing: '-0.03em' }}>{stat.val || stat.value}</div>
+                      <div style={{ fontSize: 28, fontWeight: 900, color: 'var(--white)', letterSpacing: '-0.03em' }}>
+                        {(() => {
+                          const valStr = String(stat.val || stat.value || '');
+                          const match = valStr.match(/^([\d.]+)(.+)$/);
+                          if (match) {
+                            return (
+                              <>
+                                {match[1]}
+                                <span style={{ color: 'var(--purple-light)' }}>{match[2]}</span>
+                              </>
+                            );
+                          }
+                          return valStr;
+                        })()}
+                      </div>
                       <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)' }}>{stat.label}</div>
                     </div>
                   ))}
