@@ -5,7 +5,7 @@ import { consultationData } from '../data/consultationData';
 import { IconTarget, IconBulb, IconMap, IconCheck } from '../components/Icons';
 import SEO from '../components/SEO';
 import { supabase } from '../utils/supabaseClient';
-import { formatDataNewlines } from '../utils/textHelper';
+import { formatDataNewlines, generateDynamicSlots } from '../utils/textHelper';
 
 const Consultation = () => {
   const [step, setStep] = useState(0);
@@ -308,11 +308,11 @@ const Consultation = () => {
                     <h3 style={{ fontSize: 20, fontWeight: 700, color: 'var(--dark)', marginBottom: 8 }}>{formLabels.step2.title}</h3>
                     <p style={{ fontSize: 14, color: 'var(--gray-400)', marginBottom: 28 }}>{formLabels.step2.desc}</p>
 
-                    {/* Quick time slots */}
+                    {/* Quick time slots (Dynamic real-time generation) */}
                     <div style={{ marginBottom: 24 }}>
                       <p className="form-label" style={{ marginBottom: 12 }}>{formLabels.step2.labelAvailable}</p>
                       <div className="consultation-slots" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
-                        {formLabels.slots.map((slot, i) => (
+                        {generateDynamicSlots().map((slot, i) => (
                           <button
                             type="button" key={i}
                             onClick={() => setForm(f => ({ ...f, time: slot, date: '' }))}

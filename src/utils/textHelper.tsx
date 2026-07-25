@@ -123,3 +123,41 @@ export const sanitizeInput = (val: any): any => {
   
   return val;
 };
+
+/**
+ * Generates 6 dynamic 30-minute consultation time slots based on current date & time.
+ * Daily slot timings: 10:00 AM (10am), 4:00 PM (4pm), 8:00 PM (8pm).
+ * Arranged in 2 rows x 3 columns.
+ * Automatically filters out past slots and shifts remaining slots forward seamlessly.
+ */
+export const generateDynamicSlots = (): string[] => {
+  const slots: string[] = [];
+  const now = new Date();
+  const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+  const slotConfigs = [
+    { hour: 10, label: '10am' },
+    { hour: 16, label: '4pm' },
+    { hour: 20, label: '8pm' }
+  ];
+
+  let dayOffset = 0;
+  while (slots.length < 6 && dayOffset < 14) {
+    const candidateDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + dayOffset);
+    const dayName = daysOfWeek[candidateDate.getDay()];
+    const monthName = months[candidateDate.getMonth()];
+    const dayNum = candidateDate.getDate();
+
+    for (const config of slotConfigs) {
+      const slotTime = new Date(now.getFullYear(), now.getMonth(), now.getDate() + dayOffset, config.hour, 0, 0);
+      if (slotTime.getTime() > now.getTime()) {
+        slots.push(`${dayName} ${monthName} ${dayNum}, ${config.label}`);
+        if (slots.length === 6) break;
+      }
+    }
+    dayOffset++;
+  }
+
+  return slots;
+};
