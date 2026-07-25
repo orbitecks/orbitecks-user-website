@@ -12,7 +12,7 @@ export const consultationData = {
   form: {
     success: {
       title: "You're All Set!",
-      desc: "Your consultation request has been received. Our team will confirm your slot and send you a calendar invite within 2 hours.",
+      desc: "Your consultation request has been received. Our team will confirm your slot and send you a calendar invite within 24 hours.",
       btnHome: 'Back to Home',
       btnWork: 'Explore Our Work',
     },
