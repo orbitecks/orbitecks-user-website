@@ -301,6 +301,53 @@ create table notifications (
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
+-- 17. Create Domains table
+create table if not exists public.domains (
+  id text primary key,
+  name text not null,
+  description text,
+  sort_order integer default 0,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+-- 18. Create Milestones table
+create table if not exists public.milestones (
+  id uuid default gen_random_uuid() primary key,
+  domain_id text not null references public.domains(id) on delete cascade on update cascade,
+  title text not null,
+  task_summary text,
+  deliverables text,
+  sort_order integer default 0,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  unique (domain_id, title)
+);
+
+-- 19. Create Milestone Submissions table
+create table if not exists public.milestone_submissions (
+  id uuid default gen_random_uuid() primary key,
+  milestone_id uuid not null references public.milestones(id) on delete cascade on update cascade,
+  admin_id uuid not null references public.admin_profiles(id) on delete cascade on update cascade,
+  report_text text,
+  document_url text,
+  status text not null check (status in ('in_progress', 'pending', 'approved', 'rejected')) default 'in_progress',
+  feedback text,
+  submitted_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  reviewed_at timestamp with time zone,
+  reviewed_by uuid references public.admin_profiles(id) on delete set null,
+  unique (admin_id, milestone_id)
+);
+
+-- 20. Create Milestone Doubts table
+create table if not exists public.milestone_doubts (
+  id uuid default gen_random_uuid() primary key,
+  milestone_id uuid not null references public.milestones(id) on delete cascade on update cascade,
+  admin_id uuid not null references public.admin_profiles(id) on delete cascade on update cascade,
+  question text not null,
+  resolved boolean default false,
+  answer text,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
 -- ==========================================
 -- Enable Row Level Security (RLS)
 -- ==========================================
@@ -320,6 +367,24 @@ alter table daily_reports enable row level security;
 alter table activity_logs enable row level security;
 alter table active_sessions enable row level security;
 alter table notifications enable row level security;
+alter table domains enable row level security;
+alter table milestones enable row level security;
+alter table milestone_submissions enable row level security;
+alter table milestone_doubts enable row level security;
+
+-- Milestone Submissions policies
+drop policy if exists "Allow authenticated read on milestone_submissions" on milestone_submissions;
+create policy "Allow authenticated read on milestone_submissions" on milestone_submissions for select using (true);
+
+drop policy if exists "Allow users full access on milestone_submissions" on milestone_submissions;
+create policy "Allow users full access on milestone_submissions" on milestone_submissions for all using (true) with check (true);
+
+-- Milestone Doubts policies
+drop policy if exists "Allow authenticated read on milestone_doubts" on milestone_doubts;
+create policy "Allow authenticated read on milestone_doubts" on milestone_doubts for select using (true);
+
+drop policy if exists "Allow users full access on milestone_doubts" on milestone_doubts;
+create policy "Allow users full access on milestone_doubts" on milestone_doubts for all using (true) with check (true);
 
 -- ==========================================
 -- Helper Admin check function
