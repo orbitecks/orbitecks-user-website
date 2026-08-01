@@ -315,12 +315,17 @@ create table if not exists public.milestones (
   id uuid default gen_random_uuid() primary key,
   domain_id text not null references public.domains(id) on delete cascade on update cascade,
   title text not null,
+  description text,
   task_summary text,
   deliverables text,
   sort_order integer default 0,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null,
   unique (domain_id, title)
 );
+
+alter table public.milestones add column if not exists description text;
+alter table public.milestones add column if not exists task_summary text;
+alter table public.milestones add column if not exists deliverables text;
 
 -- 19. Create Milestone Submissions table
 create table if not exists public.milestone_submissions (
