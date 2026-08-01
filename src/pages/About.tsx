@@ -37,8 +37,10 @@ const About = () => {
           if (!adminErr && rawAdmins && rawAdmins.length > 0) {
             membersList = rawAdmins.map(admin => {
               let imgUrl = admin.avatar_url || '';
-              if (imgUrl && imgUrl.startsWith('profiles/')) {
-                imgUrl = supabase.storage.from('team-vault').getPublicUrl(imgUrl).data.publicUrl;
+              if (imgUrl && !imgUrl.startsWith('http') && !imgUrl.startsWith('data:')) {
+                const vaultUrl = supabase.storage.from('team-vault').getPublicUrl(imgUrl).data.publicUrl;
+                const imagesUrl = supabase.storage.from('images').getPublicUrl(imgUrl).data.publicUrl;
+                imgUrl = vaultUrl || imagesUrl;
               }
               return {
                 name: admin.name || 'Anonymous',
