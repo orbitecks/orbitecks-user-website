@@ -347,11 +347,25 @@ create table if not exists public.milestone_doubts (
   id uuid default gen_random_uuid() primary key,
   milestone_id uuid not null references public.milestones(id) on delete cascade on update cascade,
   admin_id uuid not null references public.admin_profiles(id) on delete cascade on update cascade,
-  question text not null,
+  query_text text not null,
   resolved boolean default false,
   answer text,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
+
+-- Rename legacy 'question' column to 'query_text' if it exists in an older database instance
+do $$ 
+begin 
+  if exists (
+    select 1 from information_schema.columns 
+    where table_name='milestone_doubts' and column_name='question'
+  ) and not exists (
+    select 1 from information_schema.columns 
+    where table_name='milestone_doubts' and column_name='query_text'
+  ) then 
+    alter table public.milestone_doubts rename column question to query_text;
+  end if;
+end $$;
 
 -- ==========================================
 -- Enable Row Level Security (RLS)
@@ -955,6 +969,7 @@ CREATE TABLE IF NOT EXISTS public.milestone_doubts (
   milestone_id uuid NOT NULL REFERENCES public.milestones(id) ON DELETE CASCADE,
   admin_id uuid NOT NULL REFERENCES public.admin_profiles(id) ON DELETE CASCADE,
   query_text text NOT NULL,
+  answer text,
   resolved boolean DEFAULT false,
   created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
 );
