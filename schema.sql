@@ -927,52 +927,11 @@ insert into public.policies (id, title, description, last_updated, content) valu
 )
 on conflict (id) do nothing;
 
-
 -- ==========================================
 -- Milestones & Domains Database Migration
+-- (Tables already defined above in sections 17-20)
 -- ==========================================
 
--- 1. Create Domains/Roles table
-CREATE TABLE IF NOT EXISTS public.domains (
-  id text PRIMARY KEY,
-  name text NOT NULL UNIQUE,
-  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
-);
-
--- 2. Create Milestones table
-CREATE TABLE IF NOT EXISTS public.milestones (
-  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-  domain_id text NOT NULL REFERENCES public.domains(id) ON DELETE CASCADE,
-  title text NOT NULL,
-  description text NOT NULL,
-  sort_order integer DEFAULT 0,
-  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
-  UNIQUE(domain_id, title)
-);
-
--- 3. Create Milestone Submissions table
-CREATE TABLE IF NOT EXISTS public.milestone_submissions (
-  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-  milestone_id uuid NOT NULL REFERENCES public.milestones(id) ON DELETE CASCADE,
-  admin_id uuid NOT NULL REFERENCES public.admin_profiles(id) ON DELETE CASCADE,
-  report_text text NOT NULL,
-  status text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
-  feedback text,
-  document_url text,
-  submitted_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
-  UNIQUE(admin_id, milestone_id)
-);
-
--- 3b. Create Milestone Doubts table
-CREATE TABLE IF NOT EXISTS public.milestone_doubts (
-  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-  milestone_id uuid NOT NULL REFERENCES public.milestones(id) ON DELETE CASCADE,
-  admin_id uuid NOT NULL REFERENCES public.admin_profiles(id) ON DELETE CASCADE,
-  query_text text NOT NULL,
-  answer text,
-  resolved boolean DEFAULT false,
-  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
-);
 
 -- 4. Add domain_id and secondary_domain_id columns to admin_profiles if they don't exist
 ALTER TABLE public.admin_profiles 
