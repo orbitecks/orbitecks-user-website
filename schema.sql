@@ -348,13 +348,20 @@ create table if not exists public.milestone_submissions (
 -- 20. Create Milestone Doubts table
 create table if not exists public.milestone_doubts (
   id uuid default gen_random_uuid() primary key,
-  milestone_id uuid not null references public.milestones(id) on delete cascade on update cascade,
+  milestone_id uuid references public.milestones(id) on delete cascade on update cascade,
   admin_id uuid not null references public.admin_profiles(id) on delete cascade on update cascade,
   query_text text not null,
   resolved boolean default false,
   answer text,
+  resolved_at timestamp with time zone,
+  resolved_by uuid references public.admin_profiles(id) on delete set null,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
+
+-- Migrations for milestone_doubts columns
+alter table public.milestone_doubts alter column milestone_id drop not null;
+alter table public.milestone_doubts add column if not exists resolved_at timestamp with time zone;
+alter table public.milestone_doubts add column if not exists resolved_by uuid references public.admin_profiles(id) on delete set null;
 
 -- Rename legacy 'question' column to 'query_text' if it exists in an older database instance
 do $$ 
