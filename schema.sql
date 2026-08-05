@@ -401,19 +401,21 @@ alter table milestones enable row level security;
 alter table milestone_submissions enable row level security;
 alter table milestone_doubts enable row level security;
 
--- Milestone Submissions policies
+-- Milestone Submissions policies (users can only manage their OWN submissions, super_admin can manage all)
 drop policy if exists "Allow authenticated read on milestone_submissions" on milestone_submissions;
 create policy "Allow authenticated read on milestone_submissions" on milestone_submissions for select using (true);
 
 drop policy if exists "Allow users full access on milestone_submissions" on milestone_submissions;
-create policy "Allow users full access on milestone_submissions" on milestone_submissions for all using (true) with check (true);
+drop policy if exists "Users manage own submissions" on milestone_submissions;
+create policy "Users manage own submissions" on milestone_submissions for all using (auth.uid() = admin_id or public.is_super_admin());
 
--- Milestone Doubts policies
+-- Milestone Doubts policies (users can only manage their OWN doubts, super_admin can manage all)
 drop policy if exists "Allow authenticated read on milestone_doubts" on milestone_doubts;
 create policy "Allow authenticated read on milestone_doubts" on milestone_doubts for select using (true);
 
 drop policy if exists "Allow users full access on milestone_doubts" on milestone_doubts;
-create policy "Allow users full access on milestone_doubts" on milestone_doubts for all using (true) with check (true);
+drop policy if exists "Users manage own doubts" on milestone_doubts;
+create policy "Users manage own doubts" on milestone_doubts for all using (auth.uid() = admin_id or public.is_super_admin());
 
 -- ==========================================
 -- Helper Admin check function
@@ -517,7 +519,7 @@ create policy "Allow users to insert their own profile" on admin_profiles for in
 
 drop policy if exists "Allow users to update their own profile" on admin_profiles;
 create policy "Allow users to update their own profile" on admin_profiles for update using (
-  auth.uid() = id or email = auth.jwt() ->> 'email'
+  auth.uid() = id
 );
 
 
@@ -681,6 +683,26 @@ create policy "Users can delete own notifications" on notifications
 -- Notification managers can delete any notification
 create policy "Allow delete notifications for manage_all_notifications" on notifications
   for delete using (public.has_permission('manage_all_notifications'));
+
+-- ==========================================
+-- Auto updated_at Trigger Function
+-- ==========================================
+create or replace function public.update_updated_at_column()
+returns trigger as $$
+begin
+  new.updated_at = timezone('utc', now());
+  return new;
+end;
+$$ language plpgsql;
+
+-- Apply updated_at auto-triggers on tables that have updated_at columns
+drop trigger if exists set_updated_at on tasks;
+create trigger set_updated_at before update on tasks
+  for each row execute function public.update_updated_at_column();
+
+drop trigger if exists set_updated_at on daily_reports;
+create trigger set_updated_at before update on daily_reports
+  for each row execute function public.update_updated_at_column();
 
 
 -- ==========================================
@@ -957,33 +979,60 @@ ALTER TABLE public.milestone_submissions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.milestone_doubts ENABLE ROW LEVEL SECURITY;
 
 -- 6. Create RLS Policies
--- Domains RLS
+-- Domains RLS (only super_admin can create/edit/delete domains)
 DROP POLICY IF EXISTS "Allow read access for authenticated users" ON domains;
 CREATE POLICY "Allow read access for authenticated users" ON domains FOR SELECT TO authenticated USING (true);
 
 DROP POLICY IF EXISTS "Allow write access for authenticated users" ON domains;
-CREATE POLICY "Allow write access for authenticated users" ON domains FOR ALL TO authenticated USING (true);
+DROP POLICY IF EXISTS "Allow super_admin write on domains" ON domains;
+CREATE POLICY "Allow super_admin write on domains" ON domains FOR ALL TO authenticated USING (public.is_super_admin());
 
--- Milestones RLS
+-- Milestones RLS (only super_admin can create/edit/delete milestones)
 DROP POLICY IF EXISTS "Allow read access for authenticated users" ON milestones;
 CREATE POLICY "Allow read access for authenticated users" ON milestones FOR SELECT TO authenticated USING (true);
 
 DROP POLICY IF EXISTS "Allow write access for authenticated users" ON milestones;
-CREATE POLICY "Allow write access for authenticated users" ON milestones FOR ALL TO authenticated USING (true);
+DROP POLICY IF EXISTS "Allow super_admin write on milestones" ON milestones;
+CREATE POLICY "Allow super_admin write on milestones" ON milestones FOR ALL TO authenticated USING (public.is_super_admin());
 
--- Milestone Submissions RLS
+-- Milestone Submissions RLS (users manage own submissions, super_admin manages all)
 DROP POLICY IF EXISTS "Allow read access for authenticated users" ON milestone_submissions;
 CREATE POLICY "Allow read access for authenticated users" ON milestone_submissions FOR SELECT TO authenticated USING (true);
 
 DROP POLICY IF EXISTS "Allow full access for authenticated users" ON milestone_submissions;
-CREATE POLICY "Allow full access for authenticated users" ON milestone_submissions FOR ALL TO authenticated USING (true);
+DROP POLICY IF EXISTS "Users manage own submissions" ON milestone_submissions;
+CREATE POLICY "Users manage own submissions" ON milestone_submissions FOR ALL TO authenticated USING (auth.uid() = admin_id OR public.is_super_admin());
 
--- Milestone Doubts RLS
+-- Milestone Doubts RLS (users manage own doubts, super_admin manages all)
 DROP POLICY IF EXISTS "Allow read access for authenticated users" ON milestone_doubts;
 CREATE POLICY "Allow read access for authenticated users" ON milestone_doubts FOR SELECT TO authenticated USING (true);
 
 DROP POLICY IF EXISTS "Allow full access for authenticated users" ON milestone_doubts;
-CREATE POLICY "Allow full access for authenticated users" ON milestone_doubts FOR ALL TO authenticated USING (true);
+DROP POLICY IF EXISTS "Users manage own doubts" ON milestone_doubts;
+CREATE POLICY "Users manage own doubts" ON milestone_doubts FOR ALL TO authenticated USING (auth.uid() = admin_id OR public.is_super_admin());
+
+-- Doubt edit window enforcement trigger (15-minute window for non-super_admin)
+create or replace function public.enforce_doubt_edit_window()
+returns trigger as $$
+begin
+  if public.is_super_admin() then
+    return new;
+  end if;
+  if old.admin_id != auth.uid() then
+    raise exception 'You can only edit your own doubts.';
+  end if;
+  if old.query_text is distinct from new.query_text
+     and old.created_at < now() - interval '15 minutes' then
+    raise exception 'Edit window expired. Doubts can only be modified within 15 minutes of creation.';
+  end if;
+  return new;
+end;
+$$ language plpgsql security definer;
+
+drop trigger if exists trigger_enforce_doubt_edit_window on public.milestone_doubts;
+create trigger trigger_enforce_doubt_edit_window
+  before update on public.milestone_doubts
+  for each row execute function public.enforce_doubt_edit_window();
 
 -- 7. Seed initial domains
 INSERT INTO domains (id, name) VALUES
@@ -1786,13 +1835,9 @@ drop policy if exists "Allow public read access on team-vault" on storage.object
 create policy "Allow public read access on team-vault" on storage.objects
   for select using (bucket_id = 'team-vault');
 
+-- SECURITY: Anonymous insert/update policies REMOVED — only authenticated users can upload/modify files
 drop policy if exists "Allow anon insert on team-vault" on storage.objects;
-create policy "Allow anon insert on team-vault" on storage.objects
-  for insert with check (bucket_id = 'team-vault');
-
 drop policy if exists "Allow anon update on team-vault" on storage.objects;
-create policy "Allow anon update on team-vault" on storage.objects
-  for update using (bucket_id = 'team-vault');
 
 -- 3. Storage RLS Policies for 'images' Bucket
 drop policy if exists "Allow authenticated full access on images" on storage.objects;
@@ -1804,12 +1849,18 @@ drop policy if exists "Allow public read access on images" on storage.objects;
 create policy "Allow public read access on images" on storage.objects
   for select using (bucket_id = 'images');
 
+-- SECURITY: Anonymous insert/update policies REMOVED — only authenticated users can upload/modify files
 drop policy if exists "Allow anon insert on images" on storage.objects;
-create policy "Allow anon insert on images" on storage.objects
-  for insert with check (bucket_id = 'images');
-
 drop policy if exists "Allow anon update on images" on storage.objects;
-create policy "Allow anon update on images" on storage.objects
-  for update using (bucket_id = 'images');
 
+-- ==========================================
+-- Auto updated_at triggers for contact/consultation tables
+-- ==========================================
+drop trigger if exists set_updated_at on contact_inquiries;
+create trigger set_updated_at before update on contact_inquiries
+  for each row execute function public.update_updated_at_column();
+
+drop trigger if exists set_updated_at on consultation_bookings;
+create trigger set_updated_at before update on consultation_bookings
+  for each row execute function public.update_updated_at_column();
 
