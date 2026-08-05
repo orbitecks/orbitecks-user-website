@@ -248,6 +248,9 @@ create table tasks (
   due_date text,
   document_url text,
   completion_notes text,
+  feedback text,
+  reviewed_at timestamp with time zone,
+  reviewed_by uuid references public.admin_profiles(id) on delete set null,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null,
   updated_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
