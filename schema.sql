@@ -892,19 +892,7 @@ set role = 'super_admin',
     permissions = array['edit_copy', 'edit_services', 'edit_portfolio', 'edit_blog', 'edit_settings', 'edit_team']
 where email = 'orbitecks@gmail.com';
 
--- Create team-vault private storage bucket
-insert into storage.buckets (id, name, public) 
-values ('team-vault', 'team-vault', false) 
-on conflict (id) do nothing;
-
--- RLS policies for storage bucket 'team-vault'
-drop policy if exists "Allow super_admins full access to team-vault" on storage.objects;
-create policy "Allow super_admins full access to team-vault" on storage.objects
-  for all using (bucket_id = 'team-vault' and public.is_super_admin());
-
-drop policy if exists "Allow public read access to profiles in team-vault" on storage.objects;
-create policy "Allow public read access to profiles in team-vault" on storage.objects
-  for select using (bucket_id = 'team-vault' and name like 'profiles/%');
+-- NOTE: Storage bucket initialization and RLS policies are consolidated at end of file (line ~1815+)
 
 -- Create policies table
 create table if not exists public.policies (
@@ -1812,7 +1800,7 @@ for each row execute function public.notify_on_consultation_booking_insert();
 
 
 -- ==========================================
--- Supabase Storage Buckets & Storage RLS Policies
+-- Supabase Storage Buckets & Storage RLS Policies (CONSOLIDATED)
 -- ==========================================
 
 -- 1. Initialize Storage Buckets 'team-vault' (Private, 50MB) & 'images' (Public, 50MB)
@@ -1825,33 +1813,92 @@ on conflict (id) do update set
   file_size_limit = excluded.file_size_limit,
   allowed_mime_types = excluded.allowed_mime_types;
 
--- 2. Storage RLS Policies for 'team-vault' Bucket
+-- SECURITY: Drop all old permissive policies first
 drop policy if exists "Allow authenticated full access on team-vault" on storage.objects;
-create policy "Allow authenticated full access on team-vault" on storage.objects
-  for all using (bucket_id = 'team-vault')
-  with check (bucket_id = 'team-vault');
-
-drop policy if exists "Allow public read access on team-vault" on storage.objects;
-create policy "Allow public read access on team-vault" on storage.objects
-  for select using (bucket_id = 'team-vault');
-
--- SECURITY: Anonymous insert/update policies REMOVED — only authenticated users can upload/modify files
+drop policy if exists "Allow super_admins full access to team-vault" on storage.objects;
 drop policy if exists "Allow anon insert on team-vault" on storage.objects;
 drop policy if exists "Allow anon update on team-vault" on storage.objects;
-
--- 3. Storage RLS Policies for 'images' Bucket
 drop policy if exists "Allow authenticated full access on images" on storage.objects;
-create policy "Allow authenticated full access on images" on storage.objects
-  for all using (bucket_id = 'images')
-  with check (bucket_id = 'images');
+drop policy if exists "Allow anon insert on images" on storage.objects;
+drop policy if exists "Allow anon update on images" on storage.objects;
 
+-- 2. Storage RLS Policies for 'team-vault' Bucket (ADMIN-SCOPED)
+-- Super admins: full read/write/delete access
+create policy "Allow super_admins full access to team-vault" on storage.objects
+  for all using (bucket_id = 'team-vault' and public.is_super_admin())
+  with check (bucket_id = 'team-vault' and public.is_super_admin());
+
+-- Regular admins: can upload and update their own files (profiles/, resumes/, documents/)
+create policy "Allow admins to upload to team-vault" on storage.objects
+  for insert with check (bucket_id = 'team-vault' and public.is_admin());
+
+create policy "Allow admins to update own files in team-vault" on storage.objects
+  for update using (bucket_id = 'team-vault' and public.is_admin())
+  with check (bucket_id = 'team-vault' and public.is_admin());
+
+-- Public read: only profiles/ folder (for website team display)
+drop policy if exists "Allow public read access to profiles in team-vault" on storage.objects;
+create policy "Allow public read access to profiles in team-vault" on storage.objects
+  for select using (bucket_id = 'team-vault' and name like 'profiles/%');
+
+-- Authenticated read: all files in team-vault (team members can view shared docs)
+drop policy if exists "Allow public read access on team-vault" on storage.objects;
+create policy "Allow authenticated read on team-vault" on storage.objects
+  for select using (bucket_id = 'team-vault' and auth.role() = 'authenticated');
+
+-- 3. Storage RLS Policies for 'images' Bucket (CONTENT-EDITOR-SCOPED)
+-- Content editors with site editing permissions: full write access
+create policy "Allow content editors to write images" on storage.objects
+  for insert with check (bucket_id = 'images' and public.is_admin());
+
+create policy "Allow content editors to update images" on storage.objects
+  for update using (bucket_id = 'images' and public.is_admin())
+  with check (bucket_id = 'images' and public.is_admin());
+
+create policy "Allow super_admins to delete images" on storage.objects
+  for delete using (bucket_id = 'images' and public.is_super_admin());
+
+-- Public read: images bucket is public for website display
 drop policy if exists "Allow public read access on images" on storage.objects;
 create policy "Allow public read access on images" on storage.objects
   for select using (bucket_id = 'images');
 
--- SECURITY: Anonymous insert/update policies REMOVED — only authenticated users can upload/modify files
-drop policy if exists "Allow anon insert on images" on storage.objects;
-drop policy if exists "Allow anon update on images" on storage.objects;
+-- ==========================================
+-- M14: Rate-Limiting Triggers for Public Form Submissions
+-- ==========================================
+create or replace function public.check_contact_rate_limit()
+returns trigger as $$
+begin
+  if (select count(*) from public.contact_inquiries
+      where email = NEW.email
+      and created_at > now() - interval '1 hour') >= 5 then
+    raise exception 'Rate limit exceeded. Maximum 5 submissions per hour per email address.';
+  end if;
+  return NEW;
+end;
+$$ language plpgsql security definer;
+
+create or replace function public.check_consultation_rate_limit()
+returns trigger as $$
+begin
+  if (select count(*) from public.consultation_bookings
+      where email = NEW.email
+      and created_at > now() - interval '1 hour') >= 5 then
+    raise exception 'Rate limit exceeded. Maximum 5 booking requests per hour per email address.';
+  end if;
+  return NEW;
+end;
+$$ language plpgsql security definer;
+
+drop trigger if exists enforce_contact_rate_limit on public.contact_inquiries;
+create trigger enforce_contact_rate_limit
+  before insert on public.contact_inquiries
+  for each row execute function public.check_contact_rate_limit();
+
+drop trigger if exists enforce_consultation_rate_limit on public.consultation_bookings;
+create trigger enforce_consultation_rate_limit
+  before insert on public.consultation_bookings
+  for each row execute function public.check_consultation_rate_limit();
 
 -- ==========================================
 -- Auto updated_at triggers for contact/consultation tables
