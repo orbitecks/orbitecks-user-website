@@ -650,6 +650,30 @@ drop policy if exists "Allow super_admins to read all active sessions" on active
 drop policy if exists "Allow managers to read all active sessions" on active_sessions;
 create policy "Allow managers to read all active sessions" on active_sessions for select using (public.has_permission('view_logs') or public.has_permission('manage_team'));
 
+-- Enforce Max 2 Active Devices per Admin in active_sessions table at DB level
+create or replace function public.enforce_active_session_device_limit()
+returns trigger as $$
+declare
+  session_count integer;
+begin
+  select count(*) into session_count
+  from public.active_sessions
+  where admin_id = NEW.admin_id
+    and device_id != NEW.device_id;
+
+  if session_count >= 2 then
+    raise exception 'Device limit reached: Account is restricted to a maximum of 2 active device sessions.';
+  end if;
+
+  return NEW;
+end;
+$$ language plpgsql security definer;
+
+drop trigger if exists check_device_limit_before_insert on public.active_sessions;
+create trigger check_device_limit_before_insert
+  before insert on public.active_sessions
+  for each row execute function public.enforce_active_session_device_limit();
+
 -- Notifications policies (row-scoped for security)
 drop policy if exists "Allow authenticated read notifications" on notifications;
 drop policy if exists "Allow authenticated insert notifications" on notifications;
