@@ -1686,16 +1686,57 @@ for each row execute function public.notify_on_task_change();
 create or replace function public.notify_on_milestone_submission_change()
 returns trigger as $$
 declare
-  v_super_admin_id uuid;
+  v_target_admin_id uuid;
+  v_admin_name text;
+  v_milestone_title text;
 begin
+  select coalesce(name, email) into v_admin_name from public.admin_profiles where id = NEW.admin_id;
+  select title into v_milestone_title from public.milestones where id = NEW.milestone_id;
+
   if tg_op = 'INSERT' then
-    for v_super_admin_id in select id from public.admin_profiles where role = 'super_admin' loop
-      insert into public.notifications (user_id, title, message, type, link)
-      values (v_super_admin_id, 'Milestone Submitted', 'A milestone report has been submitted for review.', 'milestone', '/milestones');
-    end loop;
+    if NEW.status = 'in_progress' then
+      for v_target_admin_id in select id from public.admin_profiles where role = 'super_admin' and id <> NEW.admin_id loop
+        insert into public.notifications (user_id, title, message, type, link)
+        values (
+          v_target_admin_id,
+          'Milestone Work Started',
+          coalesce(v_admin_name, 'A team member') || ' started work on milestone "' || coalesce(v_milestone_title, 'Milestone') || '".',
+          'milestone',
+          '/milestones'
+        );
+      end loop;
+    elsif NEW.status = 'pending' then
+      for v_target_admin_id in select id from public.admin_profiles where role = 'super_admin' and id <> NEW.admin_id loop
+        insert into public.notifications (user_id, title, message, type, link)
+        values (
+          v_target_admin_id,
+          'Milestone Report Submitted',
+          coalesce(v_admin_name, 'A team member') || ' submitted a report for milestone "' || coalesce(v_milestone_title, 'Milestone') || '".',
+          'milestone',
+          '/milestones'
+        );
+      end loop;
+    end if;
   elsif tg_op = 'UPDATE' and old.status <> new.status then
-    insert into public.notifications (user_id, title, message, type, link)
-    values (new.admin_id, 'Milestone Feedback Received', 'Your milestone submission status has been updated to ' || new.status, 'milestone', '/milestones');
+    if NEW.status = 'approved' then
+      insert into public.notifications (user_id, title, message, type, link)
+      values (
+        NEW.admin_id,
+        'Milestone Approved',
+        'Your report for milestone "' || coalesce(v_milestone_title, 'Milestone') || '" has been approved!',
+        'milestone',
+        '/milestones'
+      );
+    elsif NEW.status = 'rejected' then
+      insert into public.notifications (user_id, title, message, type, link)
+      values (
+        NEW.admin_id,
+        'Milestone Revisions Requested',
+        'Your report for milestone "' || coalesce(v_milestone_title, 'Milestone') || '" requires revisions.',
+        'milestone',
+        '/milestones'
+      );
+    end if;
   end if;
   return new;
 end;
