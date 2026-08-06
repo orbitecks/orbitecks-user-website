@@ -1926,9 +1926,10 @@ create policy "Allow content editors to update images" on storage.objects
 create policy "Allow super_admins to delete images" on storage.objects
   for delete using (bucket_id = 'images' and public.is_super_admin());
 
--- Public read: images bucket is public for website display
-create policy "Allow public read access on images" on storage.objects
-  for select using (bucket_id = 'images');
+-- Public read: images bucket is public for website display (public URLs work natively).
+-- Restrict directory listing (select) to authenticated users to prevent unauthenticated file enumeration.
+create policy "Allow authenticated read on images" on storage.objects
+  for select using (bucket_id = 'images' and auth.role() = 'authenticated');
 
 -- ==========================================
 -- M14: Rate-Limiting Triggers for Public Form Submissions
