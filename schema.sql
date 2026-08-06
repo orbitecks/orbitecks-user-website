@@ -40,12 +40,15 @@ create table admin_profiles (
   avatar_url text,
   title text,
   linkedin_url text,
+  github_url text,
   bio text,
   resume_url text,
   has_password boolean default false,
   show_on_website boolean default false,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
+
+alter table public.admin_profiles add column if not exists github_url text;
 
 -- 2. Create Site Settings table
 create table site_settings (
