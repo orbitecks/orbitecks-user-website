@@ -519,8 +519,44 @@ create policy "Allow users to insert their own profile" on admin_profiles for in
 
 drop policy if exists "Allow users to update their own profile" on admin_profiles;
 create policy "Allow users to update their own profile" on admin_profiles for update using (
-  auth.uid() = id
+  auth.uid() = id or lower(email) = lower(auth.jwt()->>'email')
 );
+
+-- Security Definer function to allow newly registered/invited team members to claim their pre-provisioned profile
+create or replace function public.claim_admin_profile(user_email text)
+returns jsonb as $$
+declare
+  target_id uuid;
+  caller_uid uuid;
+  result_profile record;
+begin
+  caller_uid := auth.uid();
+  if caller_uid is null then
+    return jsonb_build_object('success', false, 'message', 'Not authenticated');
+  end if;
+
+  select id into target_id
+  from public.admin_profiles
+  where lower(email) = lower(user_email)
+  limit 1;
+
+  if target_id is null then
+    return jsonb_build_object('success', false, 'message', 'Profile not found');
+  end if;
+
+  if target_id != caller_uid then
+    -- Clean up temporary notifications and active_sessions for old placeholder ID
+    delete from public.notifications where user_id = target_id;
+    delete from public.active_sessions where admin_id = target_id;
+
+    -- Update pre-provisioned profile ID to match Auth User ID
+    update public.admin_profiles set id = caller_uid where id = target_id;
+  end if;
+
+  select * into result_profile from public.admin_profiles where id = caller_uid;
+  return jsonb_build_object('success', true, 'profile', row_to_json(result_profile));
+end;
+$$ language plpgsql security definer;
 
 
 -- site_settings
