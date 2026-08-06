@@ -1837,12 +1837,22 @@ on conflict (id) do update set
   file_size_limit = excluded.file_size_limit,
   allowed_mime_types = excluded.allowed_mime_types;
 
--- SECURITY: Drop all old permissive policies first
+-- SECURITY: Drop all old or existing storage policies first to ensure clean idempotent execution
 drop policy if exists "Allow authenticated full access on team-vault" on storage.objects;
 drop policy if exists "Allow super_admins full access to team-vault" on storage.objects;
+drop policy if exists "Allow admins to upload to team-vault" on storage.objects;
+drop policy if exists "Allow admins to update own files in team-vault" on storage.objects;
+drop policy if exists "Allow public read access to profiles in team-vault" on storage.objects;
+drop policy if exists "Allow public read access on team-vault" on storage.objects;
+drop policy if exists "Allow authenticated read on team-vault" on storage.objects;
 drop policy if exists "Allow anon insert on team-vault" on storage.objects;
 drop policy if exists "Allow anon update on team-vault" on storage.objects;
+
 drop policy if exists "Allow authenticated full access on images" on storage.objects;
+drop policy if exists "Allow content editors to write images" on storage.objects;
+drop policy if exists "Allow content editors to update images" on storage.objects;
+drop policy if exists "Allow super_admins to delete images" on storage.objects;
+drop policy if exists "Allow public read access on images" on storage.objects;
 drop policy if exists "Allow anon insert on images" on storage.objects;
 drop policy if exists "Allow anon update on images" on storage.objects;
 
@@ -1861,12 +1871,10 @@ create policy "Allow admins to update own files in team-vault" on storage.object
   with check (bucket_id = 'team-vault' and public.is_admin());
 
 -- Public read: only profiles/ folder (for website team display)
-drop policy if exists "Allow public read access to profiles in team-vault" on storage.objects;
 create policy "Allow public read access to profiles in team-vault" on storage.objects
   for select using (bucket_id = 'team-vault' and name like 'profiles/%');
 
 -- Authenticated read: all files in team-vault (team members can view shared docs)
-drop policy if exists "Allow public read access on team-vault" on storage.objects;
 create policy "Allow authenticated read on team-vault" on storage.objects
   for select using (bucket_id = 'team-vault' and auth.role() = 'authenticated');
 
@@ -1883,7 +1891,6 @@ create policy "Allow super_admins to delete images" on storage.objects
   for delete using (bucket_id = 'images' and public.is_super_admin());
 
 -- Public read: images bucket is public for website display
-drop policy if exists "Allow public read access on images" on storage.objects;
 create policy "Allow public read access on images" on storage.objects
   for select using (bucket_id = 'images');
 
