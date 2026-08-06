@@ -1693,7 +1693,7 @@ begin
   select coalesce(name, email) into v_admin_name from public.admin_profiles where id = NEW.admin_id;
   select title into v_milestone_title from public.milestones where id = NEW.milestone_id;
 
-  if tg_op = 'INSERT' then
+  if (tg_op = 'INSERT' or (tg_op = 'UPDATE' and old.status <> new.status)) then
     if NEW.status = 'in_progress' then
       for v_target_admin_id in select id from public.admin_profiles where role = 'super_admin' and id <> NEW.admin_id loop
         insert into public.notifications (user_id, title, message, type, link)
@@ -1716,9 +1716,7 @@ begin
           '/milestones'
         );
       end loop;
-    end if;
-  elsif tg_op = 'UPDATE' and old.status <> new.status then
-    if NEW.status = 'approved' then
+    elsif NEW.status = 'approved' then
       insert into public.notifications (user_id, title, message, type, link)
       values (
         NEW.admin_id,
