@@ -24,9 +24,9 @@ const Navbar = () => {
       <nav className={`navbar${scrolled ? ' scrolled' : ''}`}>
         <div className="container navbar-inner">
           {/* Logo */}
-          <Link to="/" className="nav-logo" onClick={() => setMobileOpen(false)} style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-            <img src="/logo.png" alt="Orbitecks Logo" style={{ height: 24, width: 'auto', objectFit: 'contain', display: 'block' }} />
-            <img src="/name.png" alt="Orbitecks" style={{ height: 22, width: 'auto', objectFit: 'contain', display: 'block' }} />
+          <Link to="/" className="nav-logo" onClick={() => setMobileOpen(false)} style={{ display: 'inline-flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
+            <img src="/logo.png" alt="Orbitecks Logo" style={{ height: 32, width: 'auto', objectFit: 'contain', display: 'block' }} />
+            <img src="/name.png" alt="Orbitecks" style={{ height: 26, width: 'auto', objectFit: 'contain', display: 'block' }} />
           </Link>
 
           {/* Desktop Links */}
