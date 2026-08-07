@@ -55,6 +55,32 @@ const SEO = ({ title, description, keywords, ogType = 'website' }: SEOProps) => 
     }
     ogTypeMeta.setAttribute('content', ogType);
 
+    // Canonical URL link
+    let canonical = document.querySelector('link[rel="canonical"]');
+    if (!canonical) {
+      canonical = document.createElement('link');
+      canonical.setAttribute('rel', 'canonical');
+      document.head.appendChild(canonical);
+    }
+    canonical.setAttribute('href', window.location.href);
+
+    // OpenGraph URL & Image
+    let ogUrl = document.querySelector('meta[property="og:url"]');
+    if (!ogUrl) {
+      ogUrl = document.createElement('meta');
+      ogUrl.setAttribute('property', 'og:url');
+      document.head.appendChild(ogUrl);
+    }
+    ogUrl.setAttribute('content', window.location.href);
+
+    let ogImage = document.querySelector('meta[property="og:image"]');
+    if (!ogImage) {
+      ogImage = document.createElement('meta');
+      ogImage.setAttribute('property', 'og:image');
+      document.head.appendChild(ogImage);
+    }
+    ogImage.setAttribute('content', `${window.location.origin}/logo.png`);
+
     // Twitter Card support for social shares
     let twitterCard = document.querySelector('meta[name="twitter:card"]');
     if (!twitterCard) {
@@ -80,6 +106,13 @@ const SEO = ({ title, description, keywords, ogType = 'website' }: SEOProps) => 
     }
     twitterDesc.setAttribute('content', description);
 
+    let twitterImage = document.querySelector('meta[name="twitter:image"]');
+    if (!twitterImage) {
+      twitterImage = document.createElement('meta');
+      twitterImage.setAttribute('name', 'twitter:image');
+      document.head.appendChild(twitterImage);
+    }
+    twitterImage.setAttribute('content', `${window.location.origin}/logo.png`);
   }, [title, description, keywords, ogType]);
 
   return null;
