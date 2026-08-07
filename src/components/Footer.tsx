@@ -6,7 +6,7 @@ import { supabase } from '../utils/supabaseClient';
 
 const Footer = () => {
   const year = new Date().getFullYear();
-  const { logo, footer: staticFooter } = navigationData;
+  const { footer: staticFooter } = navigationData;
 
   const [email, setEmail] = useState('hello@orbitecks.agency');
   const [phone, setPhone] = useState('+1 (234) 567-890');
@@ -107,8 +107,9 @@ const Footer = () => {
 
         {/* Bottom bar */}
         <div className="footer-bottom">
-          <Link to="/" className="footer-logo">
-            {logo.textFirst}<span>{logo.textSecond}</span>
+          <Link to="/" className="footer-logo" style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+            <img src="/logo.png" alt="Orbitecks Logo" style={{ height: 24, width: 'auto', objectFit: 'contain', display: 'block' }} />
+            <img src="/name.png" alt="Orbitecks" style={{ height: 22, width: 'auto', objectFit: 'contain', display: 'block' }} />
           </Link>
           <p className="footer-copy">
             © {year} {staticFooter.bottom.copyright}

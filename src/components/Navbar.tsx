@@ -17,16 +17,16 @@ const Navbar = () => {
     setMobileOpen(false);
   }, []);
 
-  const { logo, navLinks, buttons } = navigationData;
+  const { navLinks, buttons } = navigationData;
 
   return (
     <>
       <nav className={`navbar${scrolled ? ' scrolled' : ''}`}>
         <div className="container navbar-inner">
           {/* Logo */}
-          <Link to="/" className="nav-logo" onClick={() => setMobileOpen(false)}>
-            <span className="nav-logo-dot" style={{ background: logo.dotColor }} />
-            {logo.textFirst}<span>{logo.textSecond}</span>
+          <Link to="/" className="nav-logo" onClick={() => setMobileOpen(false)} style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+            <img src="/logo.png" alt="Orbitecks Logo" style={{ height: 24, width: 'auto', objectFit: 'contain', display: 'block' }} />
+            <img src="/name.png" alt="Orbitecks" style={{ height: 22, width: 'auto', objectFit: 'contain', display: 'block' }} />
           </Link>
 
           {/* Desktop Links */}
