@@ -45,10 +45,14 @@ create table admin_profiles (
   resume_url text,
   has_password boolean default false,
   show_on_website boolean default false,
+  domain_id text references public.domains(id) on delete set null on update cascade,
+  secondary_domain_id text references public.domains(id) on delete set null on update cascade,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
 alter table public.admin_profiles add column if not exists github_url text;
+alter table public.admin_profiles add column if not exists domain_id text;
+alter table public.admin_profiles add column if not exists secondary_domain_id text;
 
 -- 2. Create Site Settings table
 create table site_settings (
@@ -509,7 +513,8 @@ create trigger trigger_protect_admin_profile_fields
 
 -- Admin Profiles
 drop policy if exists "Enable read access for authenticated users" on admin_profiles;
-create policy "Enable read access for authenticated users" on admin_profiles for select using (true);
+create policy "Allow public read of website-visible profiles" on admin_profiles
+  for select using (show_on_website = true or auth.role() = 'authenticated');
 
 drop policy if exists "Enable all actions for super_admins" on admin_profiles;
 drop policy if exists "Enable all actions for team managers" on admin_profiles;
@@ -1947,6 +1952,9 @@ create policy "Allow admins to upload to team-vault" on storage.objects
 create policy "Allow admins to update own files in team-vault" on storage.objects
   for update using (bucket_id = 'team-vault' and public.is_admin())
   with check (bucket_id = 'team-vault' and public.is_admin());
+
+create policy "Allow admins to delete own files in team-vault" on storage.objects
+  for delete using (bucket_id = 'team-vault' and public.is_admin());
 
 -- Public read: only profiles/ folder (for website team display)
 create policy "Allow public read access to profiles in team-vault" on storage.objects
