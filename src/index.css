@@ -10,6 +10,40 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Styling for Date Inputs & WebKit Pseudo-elements on Mobile Devices */
+input[type="date"],
+input[type="datetime-local"],
+input[type="time"] {
+  color: #1e293b !important;
+  background-color: #ffffff !important;
+  font-family: inherit;
+  font-size: 13.5px;
+  min-height: 40px;
+}
+
+input[type="date"]::-webkit-datetime-edit,
+input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+input[type="date"]::-webkit-datetime-edit-text,
+input[type="date"]::-webkit-datetime-edit-month-field,
+input[type="date"]::-webkit-datetime-edit-day-field,
+input[type="date"]::-webkit-datetime-edit-year-field {
+  color: #1e293b !important;
+  opacity: 1 !important;
+  font-weight: 500 !important;
+}
+
+input[type="date"]:invalid::-webkit-datetime-edit,
+input[type="date"][value=""]::-webkit-datetime-edit {
+  color: #64748b !important;
+  opacity: 0.9 !important;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.7;
+  padding: 4px;
+}
+
 :root {
   --purple: #7C3AED;
   --purple-light: #8B5CF6;
