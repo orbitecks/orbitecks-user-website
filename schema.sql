@@ -1926,6 +1926,7 @@ drop policy if exists "Allow authenticated full access on team-vault" on storage
 drop policy if exists "Allow super_admins full access to team-vault" on storage.objects;
 drop policy if exists "Allow admins to upload to team-vault" on storage.objects;
 drop policy if exists "Allow admins to update own files in team-vault" on storage.objects;
+drop policy if exists "Allow admins to delete own files in team-vault" on storage.objects;
 drop policy if exists "Allow public read access to profiles in team-vault" on storage.objects;
 drop policy if exists "Allow public read access on team-vault" on storage.objects;
 drop policy if exists "Allow authenticated read on team-vault" on storage.objects;
