@@ -108,8 +108,7 @@ const Footer = () => {
         {/* Bottom bar */}
         <div className="footer-bottom">
           <Link to="/" className="footer-logo" style={{ display: 'inline-flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
-            <img src="/logo-footer.png" alt="Orbitecks Logo" style={{ height: 32, width: 'auto', objectFit: 'contain', display: 'block' }} />
-            <img src="/name-footer.png" alt="Orbitecks" style={{ height: 26, width: 'auto', objectFit: 'contain', display: 'block' }} />
+            <img src="/name_light.png" alt="Orbitecks" style={{ height: 26, width: 'auto', objectFit: 'contain', display: 'block' }} />
           </Link>
           <p className="footer-copy">
             © {year} {staticFooter.bottom.copyright}
