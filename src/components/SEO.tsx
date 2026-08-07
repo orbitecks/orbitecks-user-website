@@ -10,7 +10,8 @@ interface SEOProps {
 const SEO = ({ title, description, keywords, ogType = 'website' }: SEOProps) => {
   useEffect(() => {
     // Dynamic page title
-    document.title = `${title} | Orbitecks Creative Agency`;
+    const formattedTitle = title.includes('Orbitecks') ? title : `${title} | Orbitecks Creative Agency`;
+    document.title = formattedTitle;
 
     // Dynamic Meta Description
     let metaDesc = document.querySelector('meta[name="description"]');
