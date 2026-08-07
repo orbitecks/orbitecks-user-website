@@ -30,7 +30,16 @@ drop table if exists public.notifications cascade;
 drop table if exists public.contact_inquiries cascade;
 drop table if exists public.consultation_bookings cascade;
 
--- 1. Create Admin Profiles table for Role-Based Access Control
+-- 1. Create Domains table
+create table if not exists public.domains (
+  id text primary key,
+  name text not null,
+  description text,
+  sort_order integer default 0,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+-- 2. Create Admin Profiles table for Role-Based Access Control
 create table admin_profiles (
   id uuid primary key,
   email text not null unique,
@@ -51,10 +60,10 @@ create table admin_profiles (
 );
 
 alter table public.admin_profiles add column if not exists github_url text;
-alter table public.admin_profiles add column if not exists domain_id text;
-alter table public.admin_profiles add column if not exists secondary_domain_id text;
+alter table public.admin_profiles add column if not exists domain_id text references public.domains(id) on delete set null on update cascade;
+alter table public.admin_profiles add column if not exists secondary_domain_id text references public.domains(id) on delete set null on update cascade;
 
--- 2. Create Site Settings table
+-- 3. Create Site Settings table
 create table site_settings (
   id integer primary key default 1 check (id = 1),
   brand_name text not null default 'Orbitecks',
@@ -311,16 +320,7 @@ create table notifications (
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
--- 17. Create Domains table
-create table if not exists public.domains (
-  id text primary key,
-  name text not null,
-  description text,
-  sort_order integer default 0,
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null
-);
-
--- 18. Create Milestones table
+-- 17. Create Milestones table
 create table if not exists public.milestones (
   id uuid default gen_random_uuid() primary key,
   domain_id text not null references public.domains(id) on delete cascade on update cascade,
