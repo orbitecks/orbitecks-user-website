@@ -553,8 +553,8 @@ begin
   end if;
 
   if target_id != caller_uid then
-    -- Clean up temporary notifications and active_sessions for old placeholder ID
-    delete from public.notifications where user_id = target_id;
+    -- Transfer temporary notifications and clean up active_sessions for old placeholder ID
+    update public.notifications set user_id = caller_uid where user_id = target_id;
     delete from public.active_sessions where admin_id = target_id;
 
     -- Update pre-provisioned profile ID to match Auth User ID
@@ -735,10 +735,11 @@ create policy "Users can view own notifications" on notifications
 create policy "Allow notification managers to read all" on notifications
   for select using (public.has_permission('manage_all_notifications'));
 
--- Trigger functions (SECURITY DEFINER) insert notifications server-side.
--- Notification managers can also insert manually for any user.
-create policy "Allow insert for notification managers" on notifications
-  for insert with check (public.has_permission('manage_all_notifications'));
+-- Trigger functions & authenticated users can insert notifications for themselves or managers can insert for any user.
+drop policy if exists "Allow insert for notification managers" on notifications;
+drop policy if exists "Allow insert notifications" on notifications;
+create policy "Allow insert notifications" on notifications
+  for insert with check (auth.uid() = user_id or public.has_permission('manage_all_notifications'));
 
 -- Users can mark their own notifications as read
 create policy "Users can update own notifications" on notifications
