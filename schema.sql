@@ -536,11 +536,17 @@ returns jsonb as $$
 declare
   target_id uuid;
   caller_uid uuid;
+  caller_jwt_email text;
   result_profile record;
 begin
   caller_uid := auth.uid();
   if caller_uid is null then
     return jsonb_build_object('success', false, 'message', 'Not authenticated');
+  end if;
+
+  caller_jwt_email := auth.jwt()->>'email';
+  if caller_jwt_email is null or lower(user_email) <> lower(caller_jwt_email) then
+    return jsonb_build_object('success', false, 'message', 'Unauthorized: Email mismatch with authenticated user token');
   end if;
 
   select id into target_id
@@ -646,7 +652,9 @@ drop policy if exists "Allow team managers full access to tasks" on tasks;
 create policy "Allow team managers full access to tasks" on tasks for all using (public.has_permission('manage_team'));
 
 drop policy if exists "Allow user to update task status" on tasks;
-create policy "Allow user to update task status" on tasks for update using (auth.uid() = assigned_to);
+create policy "Allow user to update task status" on tasks for update
+  using (auth.uid() = assigned_to)
+  with check (auth.uid() = assigned_to);
 
 -- Daily Reports policies
 drop policy if exists "Allow admins to read all reports" on daily_reports;
