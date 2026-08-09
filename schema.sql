@@ -1881,10 +1881,17 @@ create or replace function public.notify_on_contact_inquiry_insert()
 returns trigger as $$
 declare
   v_admin_id uuid;
+  v_safe_first text;
+  v_safe_last text;
+  v_safe_email text;
 begin
+  v_safe_first := replace(replace(coalesce(new.first_name, ''), '<', ''), '>', '');
+  v_safe_last := replace(replace(coalesce(new.last_name, ''), '<', ''), '>', '');
+  v_safe_email := replace(replace(coalesce(new.email, ''), '<', ''), '>', '');
+
   for v_admin_id in select id from public.admin_profiles where role = 'super_admin' or 'view_contact_inquiries' = any(permissions) loop
     insert into public.notifications (user_id, title, message, type, link)
-    values (v_admin_id, 'New Contact Inquiry', 'New inquiry from ' || new.first_name || ' ' || new.last_name || ' (' || new.email || ')', 'general', '/contact-inquiries');
+    values (v_admin_id, 'New Contact Inquiry', 'New inquiry from ' || v_safe_first || ' ' || v_safe_last || ' (' || v_safe_email || ')', 'general', '/contact-inquiries');
   end loop;
   return new;
 end;
@@ -1900,10 +1907,15 @@ create or replace function public.notify_on_consultation_booking_insert()
 returns trigger as $$
 declare
   v_admin_id uuid;
+  v_safe_name text;
+  v_safe_email text;
 begin
+  v_safe_name := replace(replace(coalesce(new.name, ''), '<', ''), '>', '');
+  v_safe_email := replace(replace(coalesce(new.email, ''), '<', ''), '>', '');
+
   for v_admin_id in select id from public.admin_profiles where role = 'super_admin' or 'view_consultations' = any(permissions) loop
     insert into public.notifications (user_id, title, message, type, link)
-    values (v_admin_id, 'New Free Consultation Request', 'New consultation booking from ' || new.name || ' (' || new.email || ')', 'general', '/consultations');
+    values (v_admin_id, 'New Free Consultation Request', 'New consultation booking from ' || v_safe_name || ' (' || v_safe_email || ')', 'general', '/consultations');
   end loop;
   return new;
 end;
