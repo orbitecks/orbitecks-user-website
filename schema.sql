@@ -743,11 +743,11 @@ create policy "Users can view own notifications" on notifications
 create policy "Allow notification managers to read all" on notifications
   for select using (public.has_permission('manage_all_notifications'));
 
--- Trigger functions & authenticated users can insert notifications for themselves or managers can insert for any user.
+-- Trigger functions & authenticated users can insert notifications for themselves or send notifications to admins/teammates.
 drop policy if exists "Allow insert for notification managers" on notifications;
 drop policy if exists "Allow insert notifications" on notifications;
 create policy "Allow insert notifications" on notifications
-  for insert with check (auth.uid() = user_id or public.has_permission('manage_all_notifications'));
+  for insert with check (auth.role() = 'authenticated');
 
 -- Users can mark their own notifications as read
 create policy "Users can update own notifications" on notifications
@@ -1679,15 +1679,55 @@ ON CONFLICT (domain_id, title) DO NOTHING;
 -- trigger function for tasks
 create or replace function public.notify_on_task_change()
 returns trigger as $$
+declare
+  v_target_admin_id uuid;
+  v_actor_id uuid;
+  v_actor_name text;
 begin
+  v_actor_id := auth.uid();
+  if v_actor_id is not null then
+    select coalesce(name, email) into v_actor_name from public.admin_profiles where id = v_actor_id;
+  end if;
+  if v_actor_name is null then
+    select coalesce(name, email) into v_actor_name from public.admin_profiles where id = NEW.assigned_to;
+  end if;
+
   if tg_op = 'INSERT' then
     insert into public.notifications (user_id, title, message, type, link)
-    values (new.assigned_to, 'New Task Assigned', 'You have been assigned a new task: ' || new.title, 'task', '/tasks');
-  elsif tg_op = 'UPDATE' and old.status <> new.status then
-    insert into public.notifications (user_id, title, message, type, link)
-    values (new.assigned_to, 'Task Status Updated', 'Your task "' || new.title || '" status was updated to ' || new.status, 'task', '/tasks');
+    values (NEW.assigned_to, 'New Task Assigned', 'You have been assigned a new task: ' || NEW.title, 'task', '/tasks');
+  elsif tg_op = 'UPDATE' and OLD.status <> NEW.status then
+    -- 1. Notify Super Admins when task work starts (in_progress) or completes
+    if NEW.status = 'in_progress' then
+      for v_target_admin_id in select id from public.admin_profiles where role = 'super_admin' and id <> coalesce(v_actor_id, NEW.assigned_to) loop
+        insert into public.notifications (user_id, title, message, type, link)
+        values (
+          v_target_admin_id,
+          'Task Work Started 🚀',
+          coalesce(v_actor_name, 'A team member') || ' started work on task: "' || NEW.title || '".',
+          'task',
+          '/tasks'
+        );
+      end loop;
+    elsif NEW.status = 'completed' then
+      for v_target_admin_id in select id from public.admin_profiles where role = 'super_admin' and id <> coalesce(v_actor_id, NEW.assigned_to) loop
+        insert into public.notifications (user_id, title, message, type, link)
+        values (
+          v_target_admin_id,
+          'Task Completed 🎉',
+          coalesce(v_actor_name, 'A team member') || ' completed task: "' || NEW.title || '".',
+          'task',
+          '/tasks'
+        );
+      end loop;
+    end if;
+
+    -- 2. Notify assigned member if someone else changed their task status
+    if v_actor_id is null or v_actor_id <> NEW.assigned_to then
+      insert into public.notifications (user_id, title, message, type, link)
+      values (NEW.assigned_to, 'Task Status Updated', 'Your task "' || NEW.title || '" status was updated to ' || NEW.status, 'task', '/tasks');
+    end if;
   end if;
-  return new;
+  return NEW;
 end;
 $$ language plpgsql security definer;
 
